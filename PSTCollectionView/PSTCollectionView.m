@@ -1514,20 +1514,26 @@ static void PSTCollectionViewCommonSetup(PSTCollectionView *_self) {
 }
 
 - (void)addControlledSubview:(PSTCollectionReusableView *)subview {
-    // avoids placing views above the scroll indicator
-    // If the collection view is not displaying scrollIndicators then self.subviews.count can be 0.
-    // We take the max to ensure we insert at a non negative index because a negative index will silently fail to insert the view
-    NSInteger insertionIndex = MAX((NSInteger)(self.subviews.count - (self.dragging ? 1 : 0)), 0);
-    [self insertSubview:subview atIndex:insertionIndex];
-    UIView *scrollIndicatorView = nil;
+    NSUInteger subviewCount = self.subviews.count;
+    NSUInteger scrollIndicatorCount = 0;
     if (self.dragging) {
-        scrollIndicatorView = [self.subviews lastObject];
+        for (NSInteger idx = subviewCount-1; idx >= 0 && idx >= subviewCount-2; idx--) {
+            if ([self viewIsScrollIndicator:self.subviews[idx]]) {
+                scrollIndicatorCount++;
+            }
+        }
     }
+
+    NSInteger insertionIndex = MAX((NSInteger)(subviewCount - scrollIndicatorCount), 0);
+    [self insertSubview:subview atIndex:insertionIndex];
+    NSMutableArray *scrollIndicatorViews = [[NSMutableArray alloc] initWithCapacity:2];
 
     NSMutableArray *floatingViews = [[NSMutableArray alloc] init];
     for (UIView *uiView in self.subviews) {
         if ([uiView isKindOfClass:PSTCollectionReusableView.class] && [[(PSTCollectionReusableView *)uiView layoutAttributes] zIndex] > 0) {
             [floatingViews addObject:uiView];
+        } else if (scrollIndicatorCount > 0 && [self viewIsScrollIndicator:uiView]) {
+            [scrollIndicatorViews addObject:uiView];
         }
     }
 
@@ -1547,9 +1553,25 @@ static void PSTCollectionViewCommonSetup(PSTCollectionView *_self) {
         [self bringSubviewToFront:uiView];
     }
 
-    if (floatingViews.count && scrollIndicatorView) {
-        [self bringSubviewToFront:scrollIndicatorView];
+    if (floatingViews.count > 0) {
+        for (UIView *scrollIndicatorView in scrollIndicatorViews) {
+            [self bringSubviewToFront:scrollIndicatorView];
+        }
     }
+}
+
+- (BOOL)viewIsScrollIndicator:(UIView *)view {
+    if ([view isKindOfClass:[UIImageView class]]) {
+        if (CGRectGetHeight(view.frame) == 7.f || CGRectGetWidth(view.frame) == 7.f) {
+            id image = [view performSelector:@selector(image)];
+
+            if ([image isKindOfClass:NSClassFromString([NSString stringWithFormat:@"_%@Res%@le%@",@"UI", @"izab", @"Image"])]) {
+                return YES;
+            }
+        }
+    }
+
+    return NO;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////
