@@ -1151,8 +1151,7 @@ static void PSTCollectionViewCommonSetup(PSTCollectionView *_self) {
             }
 
             if (prevAttr != nil && newAttr != nil) {
-                layoutInterchangeData[newKey] = [NSDictionary dictionaryWithObjects:@[prevAttr, newAttr]
-                        forKeys:@[@"previousLayoutInfos", @"newLayoutInfos"]];
+                layoutInterchangeData[newKey] = @{@"previousLayoutInfos": prevAttr, @"newLayoutInfos": newAttr};
             }
         }
 
@@ -2274,7 +2273,7 @@ static BOOL PSTRegisterClass(NSString *UIClassName, Class PSTClass) {
 
     }else {
         // We're most likely on iOS5, the requested UIKit class doesn't exist, so we create it dynamically.
-        if ((UIClass = objc_allocateClassPair(PSTCollectionView.class, UIClassName.UTF8String, 0))) {  objc_registerClassPair(UIClass);
+        if ((UIClass = objc_allocateClassPair(PSTClass, UIClassName.UTF8String, 0))) {  objc_registerClassPair(UIClass);
         }
     }
     return YES;
