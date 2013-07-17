@@ -752,7 +752,8 @@ static void PSTCollectionViewCommonSetup(PSTCollectionView *_self) {
     CGPoint touchPoint = [[touches anyObject] locationInView:self];
     NSIndexPath *indexPath = [self indexPathForItemAtPoint:touchPoint];
     if (indexPath && self.allowsSelection) {
-        [self highlightItemAtIndexPath:indexPath animated:YES scrollPosition:PSTCollectionViewScrollPositionNone notifyDelegate:YES];
+        if (![self highlightItemAtIndexPath:indexPath animated:YES scrollPosition:PSTCollectionViewScrollPositionNone notifyDelegate:YES])
+            return;
 
         self.extVars.touchingIndexPath = indexPath;
         self.extVars.currentIndexPath = indexPath;
