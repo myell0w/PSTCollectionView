@@ -269,11 +269,21 @@ static void PSTCollectionViewCommonSetup(PSTCollectionView *_self) {
 
 - (void)setFrame:(CGRect)frame {
     if (!CGRectEqualToRect(frame, self.frame)) {
-        if ([self.collectionViewLayout shouldInvalidateLayoutForBoundsChange:frame]) {
+        [super setFrame:frame];
+        if ([self.collectionViewLayout shouldInvalidateLayoutForBoundsChange:self.bounds]) {
             [self invalidateLayout];
             _collectionViewFlags.fadeCellsForBoundsChange = YES;
         }
-        [super setFrame:frame];
+    }
+}
+
+- (void)setBounds:(CGRect)bounds {
+    if (!CGRectEqualToRect(bounds, self.bounds)) {
+        [super setBounds:bounds];
+        if ([self.collectionViewLayout shouldInvalidateLayoutForBoundsChange:bounds]) {
+            [self invalidateLayout];
+            _collectionViewFlags.fadeCellsForBoundsChange = YES;
+        }
     }
 }
 
@@ -449,11 +459,6 @@ static void PSTCollectionViewCommonSetup(PSTCollectionView *_self) {
             }else {
                 cell = [cellClass new];
             }
-        }
-        PSTCollectionViewLayout *layout = [self collectionViewLayout];
-        if ([layout isKindOfClass:PSTCollectionViewFlowLayout.class]) {
-            CGSize itemSize = ((PSTCollectionViewFlowLayout *)layout).itemSize;
-            cell.bounds = CGRectMake(0, 0, itemSize.width, itemSize.height);
         }
         cell.collectionView = self;
         cell.reuseIdentifier = identifier;
@@ -1211,7 +1216,7 @@ static void PSTCollectionViewCommonSetup(PSTCollectionView *_self) {
                 PSTCollectionReusableView *view = _allVisibleViewsDict[key];
                 if (!view) {
                     PSTCollectionViewLayoutAttributes *attrs = layoutInterchangeData[key][@"previousLayoutInfos"];
-                    view = [self dequeueReusableOrCreateDecorationViewOfKind:attrs.reuseIdentifier forIndexPath:attrs.indexPath];
+                    view = [self dequeueReusableOrCreateDecorationViewOfKind:attrs.representedElementKind forIndexPath:attrs.indexPath];
                     _allVisibleViewsDict[key] = view;
                     [self addControlledSubview:view];
                 }
@@ -1406,7 +1411,7 @@ static void PSTCollectionViewCommonSetup(PSTCollectionView *_self) {
                         atIndexPath:layoutAttributes.indexPath
                         withLayoutAttributes:layoutAttributes];
             }else if (itemKey.type == PSTCollectionViewItemTypeDecorationView) {
-                view = [self dequeueReusableOrCreateDecorationViewOfKind:layoutAttributes.reuseIdentifier forIndexPath:layoutAttributes.indexPath];
+                view = [self dequeueReusableOrCreateDecorationViewOfKind:layoutAttributes.representedElementKind forIndexPath:layoutAttributes.indexPath];
             }
 
             // Supplementary views are optional
@@ -2113,11 +2118,10 @@ static void PSTCollectionViewCommonSetup(PSTCollectionView *_self) {
                     [newModel insertObject:section atIndex:updateItem.indexPathAfterUpdate.section];
                 }
                 else {
-                    NSUInteger originalIndex = [newModel[updateItem.indexPathBeforeUpdate.section] indexOfObject:@(updateItem.indexPathBeforeUpdate.item)];
-                    id object = newModel[updateItem.indexPathBeforeUpdate.section][originalIndex];
-                    [newModel[updateItem.indexPathBeforeUpdate.section] removeObjectAtIndex:originalIndex];
+                    id object = @([oldCollectionViewData globalIndexForItemAtIndexPath:updateItem.indexPathBeforeUpdate]);
+                    [newModel[updateItem.indexPathBeforeUpdate.section] removeObject:object];
                     [newModel[updateItem.indexPathAfterUpdate.section] insertObject:object
-                            atIndex:updateItem.indexPathAfterUpdate.item];
+                                                                            atIndex:updateItem.indexPathAfterUpdate.item];
                 }
             }
                 break;
