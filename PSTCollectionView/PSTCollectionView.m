@@ -736,7 +736,7 @@ static void PSTCollectionViewCommonSetup(PSTCollectionView *_self) {
             break;
     }
 
-    return targetRect;
+    return CGRectIntersection((CGRect){.size = self.contentSize}, targetRect);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////
