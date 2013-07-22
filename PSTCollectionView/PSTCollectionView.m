@@ -701,7 +701,7 @@ static void PSTCollectionViewCommonSetup(PSTCollectionView *_self) {
         @throw [NSException exceptionWithName:NSInvalidArgumentException reason:@"PSTCollectionViewScrollPosition: attempt to use a scroll position with multiple horizontal positioning styles" userInfo:nil];
     }
 
-    CGRect frame = self.layer.bounds;
+    CGRect frame = UIEdgeInsetsInsetRect(self.layer.bounds, self.contentInset);
     CGFloat calculateX;
     CGFloat calculateY;
 
