@@ -110,7 +110,7 @@ CGFloat PSTSimulatorAnimationDragCoefficient(void);
         unsigned int doneFirstLayout : 1;
     }_collectionViewFlags;
     CGPoint _lastLayoutOffset;
-    char filler[200]; // [HACK] Our class needs to be larger than Apple's class for the superclass change to work
+    char filler[200]; // [HACK] Our class needs to be larger than Apple's class for the superclass change to work.
 }
 @property (nonatomic, strong) PSTCollectionViewData *collectionViewData;
 @property (nonatomic, strong, readonly) PSTCollectionViewExt *extVars;
@@ -1302,28 +1302,28 @@ static void PSTCollectionViewCommonSetup(PSTCollectionView *_self) {
 - (void)setDelegate:(id<PSTCollectionViewDelegate>)delegate {
     self.extVars.collectionViewDelegate = delegate;
 
-    //	Managing the Selected Cells
+    //  Managing the Selected Cells
     _collectionViewFlags.delegateShouldSelectItemAtIndexPath = [self.delegate respondsToSelector:@selector(collectionView:shouldSelectItemAtIndexPath:)];
     _collectionViewFlags.delegateDidSelectItemAtIndexPath = [self.delegate respondsToSelector:@selector(collectionView:didSelectItemAtIndexPath:)];
     _collectionViewFlags.delegateShouldDeselectItemAtIndexPath = [self.delegate respondsToSelector:@selector(collectionView:shouldDeselectItemAtIndexPath:)];
     _collectionViewFlags.delegateDidDeselectItemAtIndexPath = [self.delegate respondsToSelector:@selector(collectionView:didDeselectItemAtIndexPath:)];
 
-    //	Managing Cell Highlighting
+    //  Managing Cell Highlighting
     _collectionViewFlags.delegateShouldHighlightItemAtIndexPath = [self.delegate respondsToSelector:@selector(collectionView:shouldHighlightItemAtIndexPath:)];
     _collectionViewFlags.delegateDidHighlightItemAtIndexPath = [self.delegate respondsToSelector:@selector(collectionView:didHighlightItemAtIndexPath:)];
     _collectionViewFlags.delegateDidUnhighlightItemAtIndexPath = [self.delegate respondsToSelector:@selector(collectionView:didUnhighlightItemAtIndexPath:)];
 
-    //	Tracking the Removal of Views
+    //  Tracking the Removal of Views
     _collectionViewFlags.delegateDidEndDisplayingCell = [self.delegate respondsToSelector:@selector(collectionView:didEndDisplayingCell:forItemAtIndexPath:)];
     _collectionViewFlags.delegateDidEndDisplayingSupplementaryView = [self.delegate respondsToSelector:@selector(collectionView:didEndDisplayingSupplementaryView:forElementOfKind:atIndexPath:)];
 
-    //	Managing Actions for Cells
+    //  Managing Actions for Cells
     _collectionViewFlags.delegateSupportsMenus = [self.delegate respondsToSelector:@selector(collectionView:shouldShowMenuForItemAtIndexPath:)];
 
     // These aren't present in the flags which is a little strange. Not adding them because that will mess with byte alignment which will affect cross compatibility.
     // The flag names are guesses and are there for documentation purposes.
-    // _collectionViewFlags.delegateCanPerformActionForItemAtIndexPath	= [self.delegate respondsToSelector:@selector(collectionView:canPerformAction:forItemAtIndexPath:withSender:)];
-    // _collectionViewFlags.delegatePerformActionForItemAtIndexPath		= [self.delegate respondsToSelector:@selector(collectionView:performAction:forItemAtIndexPath:withSender:)];
+    // _collectionViewFlags.delegateCanPerformActionForItemAtIndexPath = [self.delegate respondsToSelector:@selector(collectionView:canPerformAction:forItemAtIndexPath:withSender:)];
+    // _collectionViewFlags.delegatePerformActionForItemAtIndexPath    = [self.delegate respondsToSelector:@selector(collectionView:performAction:forItemAtIndexPath:withSender:)];
 }
 
 // Might be overkill since two are required and two are handled by PSTCollectionViewData leaving only one flag we actually need to check for
@@ -1331,10 +1331,10 @@ static void PSTCollectionViewCommonSetup(PSTCollectionView *_self) {
     if (dataSource != _dataSource) {
         _dataSource = dataSource;
 
-        //	Getting Item and Section Metrics
+        //  Getting Item and Section Metrics
         _collectionViewFlags.dataSourceNumberOfSections = [_dataSource respondsToSelector:@selector(numberOfSectionsInCollectionView:)];
 
-        //	Getting Views for Items
+        //  Getting Views for Items
         _collectionViewFlags.dataSourceViewForSupplementaryElement = [_dataSource respondsToSelector:@selector(collectionView:viewForSupplementaryElementOfKind:atIndexPath:)];
     }
 }
@@ -2249,38 +2249,27 @@ static void PSTCollectionViewCommonSetup(PSTCollectionView *_self) {
 @implementation PSUICollectionViewController_ @end
 
 static BOOL PSTRegisterClass(NSString *UIClassName, Class PSTClass) {
-    NSCParameterAssert(UIClassName);
-    NSCParameterAssert(PSTClass);
-    
+    NSCParameterAssert(UIClassName && PSTClass);
+
     Class UIClass = NSClassFromString(UIClassName);
     if (UIClass) {
         // Class size need to be the same for class_setSuperclass to work.
         // If the UIKit class is smaller then our subclass, ivars won't clash, so there's no issue.
-        int sizeDifference = (int)class_getInstanceSize(UIClass) - (int)class_getInstanceSize(PSTClass);
+        long sizeDifference = class_getInstanceSize(UIClass) - class_getInstanceSize(PSTClass);
         if (sizeDifference > 0) {
-            NSLog(@"");
-            // Create a subclass with a filler ivar to match the size.
-            NSString *subclassName = [NSStringFromClass(PSTClass) stringByAppendingString:@"_"];
-            Class subclass = objc_allocateClassPair(PSTClass, subclassName.UTF8String, sizeDifference);
-            if (subclass) {
-                class_addIvar(subclass, "pst_ivar_layout_filler", sizeDifference, 0, @encode(int));
-                objc_registerClassPair(subclass);
-                PSTClass = subclass;
-                NSCAssert(class_getInstanceSize(UIClass) == class_getInstanceSize(PSTClass), @"class size needs to match.");
-            }else {
-                // Code must have been called twice?
-                return NO;
-            }
-        }
+            NSLog(@"Warning! ivar size mismatch in %@ - can't change the superclass.", PSTClass);
+            return NO;
+        } else {
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
-        // class_setSuperclass is deprecated, but once iOS7 is out we hopefully can drop iOS5 and don't need this code anymore anyway.
-        class_setSuperclass(PSTClass, UIClass);
+            // class_setSuperclass is deprecated, but still exists and works on iOS6/7.
+            class_setSuperclass(PSTClass, UIClass);
 #pragma clang diagnostic pop
-
-    }else {
+        }
+    } else {
         // We're most likely on iOS5, the requested UIKit class doesn't exist, so we create it dynamically.
-        if ((UIClass = objc_allocateClassPair(PSTClass, UIClassName.UTF8String, 0))) {  objc_registerClassPair(UIClass);
+        if ((UIClass = objc_allocateClassPair(PSTClass, UIClassName.UTF8String, 0))) {
+            objc_registerClassPair(UIClass);
         }
     }
     return YES;

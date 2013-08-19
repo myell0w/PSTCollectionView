@@ -14,7 +14,7 @@
     struct {
         unsigned int inUpdateAnimation : 1;
     }_reusableViewFlags;
-    char filler[50]; // [HACK] Our class needs to be larged than Apple's class for the superclass change to work
+    char filler[50]; // [HACK] Our class needs to be larger than Apple's class for the superclass change to work.
 }
 @property (nonatomic, copy) NSString *reuseIdentifier;
 @property (nonatomic, unsafe_unretained) PSTCollectionView *collectionView;
@@ -168,11 +168,11 @@
         // Ignore the events if view wants to
         if (!((UIView *)view).isUserInteractionEnabled &&
                 [view respondsToSelector:@selector(setHighlighted:)] &&
-                ![view isKindOfClass:UIButton.class]) {
+                ![view isKindOfClass:UIControl.class]) {
             [view setHighlighted:highlighted];
-
+            
+            [self setHighlighted:highlighted forViews:[view subviews]];
         }
-        [self setHighlighted:highlighted forViews:[view subviews]];
     }
 }
 
