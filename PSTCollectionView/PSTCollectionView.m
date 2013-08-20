@@ -12,6 +12,27 @@
 
 #import <objc/runtime.h>
 
+static CGFloat pst_scrollIndicatorWidth = 5.f;
+// initialized in constructor function for performance reasons
+static void  __attribute((constructor)) PSTInitializeScrollIndicatorWidth(void) {
+    if (![UIView instancesRespondToSelector:@selector(snapshotViewAfterScreenUpdates:)]) {
+        pst_scrollIndicatorWidth = 7.f;
+    }
+}
+static BOOL PSTViewIsScrollIndicator(UIView *view) {
+    if ([view isKindOfClass:[UIImageView class]]) {
+        if (CGRectGetHeight(view.frame) == pst_scrollIndicatorWidth || CGRectGetWidth(view.frame) == pst_scrollIndicatorWidth) {
+            id image = [view performSelector:@selector(image)];
+            if ([image isKindOfClass:NSClassFromString([NSString stringWithFormat:@"_%@Res%@le%@",@"UI", @"izab", @"Image"])]) {
+                return YES;
+            }
+        }
+    }
+
+    return NO;
+}
+
+
 @interface PSTCollectionViewLayout (Internal)
 @property (nonatomic, unsafe_unretained) PSTCollectionView *collectionView;
 @end
@@ -1525,9 +1546,9 @@ static void PSTCollectionViewCommonSetup(PSTCollectionView *_self) {
 - (void)addControlledSubview:(PSTCollectionReusableView *)subview {
     NSUInteger subviewCount = self.subviews.count;
     NSUInteger scrollIndicatorCount = 0;
-    if (self.dragging) {
+    if (self.dragging || self.decelerating) {
         for (NSInteger idx = subviewCount-1; idx >= 0 && idx >= subviewCount-2; idx--) {
-            if ([self viewIsScrollIndicator:self.subviews[idx]]) {
+            if (PSTViewIsScrollIndicator(self.subviews[idx])) {
                 scrollIndicatorCount++;
             }
         }
@@ -1541,7 +1562,7 @@ static void PSTCollectionViewCommonSetup(PSTCollectionView *_self) {
     for (UIView *uiView in self.subviews) {
         if ([uiView isKindOfClass:PSTCollectionReusableView.class] && [[(PSTCollectionReusableView *)uiView layoutAttributes] zIndex] > 0) {
             [floatingViews addObject:uiView];
-        } else if (scrollIndicatorCount > 0 && [self viewIsScrollIndicator:uiView]) {
+        } else if (scrollIndicatorCount > 0 && PSTViewIsScrollIndicator(uiView)) {
             [scrollIndicatorViews addObject:uiView];
         }
     }
@@ -1567,20 +1588,6 @@ static void PSTCollectionViewCommonSetup(PSTCollectionView *_self) {
             [self bringSubviewToFront:scrollIndicatorView];
         }
     }
-}
-
-- (BOOL)viewIsScrollIndicator:(UIView *)view {
-    if ([view isKindOfClass:[UIImageView class]]) {
-        if (CGRectGetHeight(view.frame) == 7.f || CGRectGetWidth(view.frame) == 7.f) {
-            id image = [view performSelector:@selector(image)];
-
-            if ([image isKindOfClass:NSClassFromString([NSString stringWithFormat:@"_%@Res%@le%@",@"UI", @"izab", @"Image"])]) {
-                return YES;
-            }
-        }
-    }
-
-    return NO;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////
