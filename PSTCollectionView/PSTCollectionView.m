@@ -682,7 +682,9 @@ static void PSTCollectionViewCommonSetup(PSTCollectionView *_self) {
 
     [visibleCells enumerateObjectsUsingBlock:^(id obj, NSUInteger idx, BOOL *stop) {
         PSTCollectionViewCell *cell = (PSTCollectionViewCell *)obj;
-        [indexPaths addObject:cell.layoutAttributes.indexPath];
+        if (cell.layoutAttributes.indexPath != nil) {
+            [indexPaths addObject:cell.layoutAttributes.indexPath];
+        }
     }];
 
     return indexPaths;
