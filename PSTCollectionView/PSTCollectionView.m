@@ -1544,28 +1544,17 @@ static void PSTCollectionViewCommonSetup(PSTCollectionView *_self) {
 }
 
 - (void)addControlledSubview:(PSTCollectionReusableView *)subview {
-    NSUInteger subviewCount = self.subviews.count;
-    NSUInteger scrollIndicatorCount = 0;
-    if (self.dragging || self.decelerating) {
-        for (NSInteger idx = subviewCount-1; idx >= 0 && idx >= subviewCount-2; idx--) {
-            if (PSTViewIsScrollIndicator(self.subviews[idx])) {
-                scrollIndicatorCount++;
-            }
-        }
-    }
-
-    NSInteger insertionIndex = MAX((NSInteger)(subviewCount - scrollIndicatorCount), 0);
-    [self insertSubview:subview atIndex:insertionIndex];
     NSMutableArray *scrollIndicatorViews = [[NSMutableArray alloc] initWithCapacity:2];
-
     NSMutableArray *floatingViews = [[NSMutableArray alloc] init];
     for (UIView *uiView in self.subviews) {
         if ([uiView isKindOfClass:PSTCollectionReusableView.class] && [[(PSTCollectionReusableView *)uiView layoutAttributes] zIndex] > 0) {
             [floatingViews addObject:uiView];
-        } else if (scrollIndicatorCount > 0 && PSTViewIsScrollIndicator(uiView)) {
+        } else if (PSTViewIsScrollIndicator(uiView)) {
             [scrollIndicatorViews addObject:uiView];
         }
     }
+
+    [self addSubview:subview];
 
     [floatingViews sortUsingComparator:^NSComparisonResult(PSTCollectionReusableView *obj1, PSTCollectionReusableView *obj2) {
         CGFloat z1 = [[obj1 layoutAttributes] zIndex];
@@ -1583,10 +1572,8 @@ static void PSTCollectionViewCommonSetup(PSTCollectionView *_self) {
         [self bringSubviewToFront:uiView];
     }
 
-    if (floatingViews.count > 0) {
-        for (UIView *scrollIndicatorView in scrollIndicatorViews) {
-            [self bringSubviewToFront:scrollIndicatorView];
-        }
+    for (UIView *scrollIndicatorView in scrollIndicatorViews) {
+        [self bringSubviewToFront:scrollIndicatorView];
     }
 }
 
