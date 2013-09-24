@@ -1462,7 +1462,7 @@ static void PSTCollectionViewCommonSetup(PSTCollectionView *_self) {
     for (PSTCollectionViewItemKey *itemKey in allVisibleItemKeys) {
         PSTCollectionReusableView *reusableView = _allVisibleViewsDict[itemKey];
         if (reusableView) {
-            [reusableView removeFromSuperview];
+            reusableView.hidden = YES;
             [_allVisibleViewsDict removeObjectForKey:itemKey];
             if (itemKey.type == PSTCollectionViewItemTypeCell) {
                 if (_collectionViewFlags.delegateDidEndDisplayingCell) {
@@ -1517,7 +1517,7 @@ static void PSTCollectionViewCommonSetup(PSTCollectionView *_self) {
 - (void)queueReusableView:(PSTCollectionReusableView *)reusableView inQueue:(NSMutableDictionary *)queue withIdentifier:(NSString *)identifier {
     NSParameterAssert(identifier.length > 0);
 
-    [reusableView removeFromSuperview];
+    reusableView.hidden = YES;
     [reusableView prepareForReuse];
 
     // enqueue cell
@@ -1546,6 +1546,11 @@ static void PSTCollectionViewCommonSetup(PSTCollectionView *_self) {
 }
 
 - (void)addControlledSubview:(PSTCollectionReusableView *)subview {
+    if (subview.superview == self) {
+        subview.hidden = NO;
+        return;
+    }
+
     NSMutableArray *scrollIndicatorViews = [[NSMutableArray alloc] initWithCapacity:2];
     NSMutableArray *floatingViews = [[NSMutableArray alloc] init];
     for (UIView *uiView in self.subviews) {
