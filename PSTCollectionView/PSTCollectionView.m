@@ -1389,12 +1389,18 @@ static void PSTCollectionViewCommonSetup(PSTCollectionView *_self) {
     }
 }
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-property-ivar"
+
 - (CGRect)visibleBoundRects {
     // in original UICollectionView implementation they
     // check for _visibleBounds and can union self.bounds
     // with this value. Don't know the meaning of _visibleBounds however.
     return self.bounds;
 }
+
+#pragma clang diagnostic pop
+
 ///////////////////////////////////////////////////////////////////////////////////////////
 #pragma mark - Private
 
