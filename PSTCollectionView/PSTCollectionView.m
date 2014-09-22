@@ -9,8 +9,10 @@
 #import "PSTCollectionViewData.h"
 #import "PSTCollectionViewLayout+Internals.h"
 #import "PSTCollectionViewItemKey.h"
-
 #import <objc/runtime.h>
+#if TARGET_IPHONE_SIMULATOR
+#import <dlfcn.h>
+#endif
 
 static CGFloat pst_scrollIndicatorWidth = 5.f;
 // initialized in constructor function for performance reasons
@@ -56,8 +58,6 @@ static BOOL PSTViewIsScrollIndicator(UIView *view) {
 }
 @property (nonatomic, copy) NSString *elementKind;
 @end
-
-CGFloat PSTSimulatorAnimationDragCoefficient(void);
 
 @class PSTCollectionViewExt;
 
@@ -251,7 +251,7 @@ static void PSTCollectionViewCommonSetup(PSTCollectionView *_self) {
     // Adding alpha animation to make the relayouting smooth
     if (_collectionViewFlags.fadeCellsForBoundsChange) {
         CATransition *transition = [CATransition animation];
-        transition.duration = 0.25f * PSTSimulatorAnimationDragCoefficient();
+        transition.duration = 0.25;
         transition.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseInEaseOut];
         transition.type = kCATransitionFade;
         [self.layer addAnimation:transition forKey:@"rotationAnimation"];
@@ -2204,142 +2204,4 @@ static void PSTCollectionViewCommonSetup(PSTCollectionView *_self) {
     if (!updating) [self endItemAnimations];
 }
 
-///////////////////////////////////////////////////////////////////////////////////////////
-#pragma mark - PSTCollection/UICollection interoperability
-
-#ifdef kPSUIInteroperabilityEnabled
-#import <objc/message.h>
-- (NSMethodSignature *)methodSignatureForSelector:(SEL)selector {
-    NSMethodSignature *sig = [super methodSignatureForSelector:selector];
-    if(!sig) {
-        NSString *selString = NSStringFromSelector(selector);
-        if ([selString hasPrefix:@"_"]) {
-            SEL cleanedSelector = NSSelectorFromString([selString substringFromIndex:1]);
-            sig = [super methodSignatureForSelector:cleanedSelector];
-        }
-    }
-    return sig;
-}
-- (void)forwardInvocation:(NSInvocation *)inv {
-    NSString *selString = NSStringFromSelector([inv selector]);
-    if ([selString hasPrefix:@"_"]) {
-        SEL cleanedSelector = NSSelectorFromString([selString substringFromIndex:1]);
-        if ([self respondsToSelector:cleanedSelector]) {
-            // dynamically add method for faster resolving
-            Method newMethod = class_getInstanceMethod(self.class, [inv selector]);
-            IMP underscoreIMP = imp_implementationWithBlock(^(id _self) {
-                return objc_msgSend(_self, cleanedSelector);
-            });
-            class_addMethod(self.class, [inv selector], underscoreIMP, method_getTypeEncoding(newMethod));
-            // invoke now
-            inv.selector = cleanedSelector;
-            [inv invokeWithTarget:self];
-        }
-    }else {
-        [super forwardInvocation:inv];
-    }
-}
-#endif
-
 @end
-
-///////////////////////////////////////////////////////////////////////////////////////////
-#pragma mark - Runtime Additions to create UICollectionView
-
-@implementation PSUICollectionView_ @end
-@implementation PSUICollectionViewCell_ @end
-@implementation PSUICollectionReusableView_ @end
-@implementation PSUICollectionViewLayout_ @end
-@implementation PSUICollectionViewFlowLayout_ @end
-@implementation PSUICollectionViewLayoutAttributes_ @end
-@implementation PSUICollectionViewController_ @end
-
-static BOOL PSTRegisterClass(NSString *UIClassName, Class PSTClass) {
-    NSCParameterAssert(UIClassName && PSTClass);
-
-    Class UIClass = NSClassFromString(UIClassName);
-    if (UIClass) {
-        // Class size need to be the same for class_setSuperclass to work.
-        // If the UIKit class is smaller then our subclass, ivars won't clash, so there's no issue.
-        long sizeDifference = class_getInstanceSize(UIClass) - class_getInstanceSize(PSTClass);
-        if (sizeDifference > 0) {
-            NSLog(@"Warning! ivar size mismatch in %@ - can't change the superclass.", PSTClass);
-            return NO;
-        } else {
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-            // class_setSuperclass is deprecated, but still exists and works on iOS6/7.
-            class_setSuperclass(PSTClass, UIClass);
-#pragma clang diagnostic pop
-        }
-    } else {
-        // We're most likely on iOS5, the requested UIKit class doesn't exist, so we create it dynamically.
-        if ((UIClass = objc_allocateClassPair(PSTClass, UIClassName.UTF8String, 0))) {
-            objc_registerClassPair(UIClass);
-        }
-    }
-    return YES;
-}
-
-// Create subclasses that pose as UICollectionView et al, if not available at runtime.
-__attribute__((constructor)) static void PSTCreateUICollectionViewClasses(void) {
-    if (objc_getClass("PSTCollectionViewDisableForwardToUICollectionViewSentinel")) return;
-
-    @autoreleasepool {
-        // Change superclass at runtime. This allows seamless switching from PST* to UI* at runtime.
-        PSTRegisterClass(@"UICollectionView", PSUICollectionView_.class);
-        PSTRegisterClass(@"UICollectionViewCell", PSUICollectionViewCell_.class);
-        PSTRegisterClass(@"UICollectionReusableView", PSUICollectionReusableView_.class);
-        PSTRegisterClass(@"UICollectionViewLayout", PSUICollectionViewLayout_.class);
-        PSTRegisterClass(@"UICollectionViewFlowLayout", PSUICollectionViewFlowLayout_.class);
-        PSTRegisterClass(@"UICollectionViewLayoutAttributes", PSUICollectionViewLayoutAttributes_.class);
-        PSTRegisterClass(@"UICollectionViewController", PSUICollectionViewController_.class);
-
-        // add PSUI classes at runtime to make Interface Builder sane
-        // (IB doesn't allow adding the PSUICollectionView_ types but doesn't complain on unknown classes)
-        // The class name may already be in use. This may happen if this code is running for the second time (first for an app bundle, then again for a unit test bundle).
-        Class c;
-        if ((c = objc_allocateClassPair(PSUICollectionView_.class, "PSUICollectionView", 0))) objc_registerClassPair(c);
-        if ((c = objc_allocateClassPair(PSUICollectionViewCell_.class, "PSUICollectionViewCell", 0))) objc_registerClassPair(c);
-        if ((c = objc_allocateClassPair(PSUICollectionReusableView_.class, "PSUICollectionReusableView", 0))) objc_registerClassPair(c);
-        if ((c = objc_allocateClassPair(PSUICollectionViewLayout_.class, "PSUICollectionViewLayout", 0))) objc_registerClassPair(c);
-        if ((c = objc_allocateClassPair(PSUICollectionViewFlowLayout_.class, "PSUICollectionViewFlowLayout", 0))) objc_registerClassPair(c);
-        if ((c = objc_allocateClassPair(PSUICollectionViewLayoutAttributes_.class, "PSUICollectionViewLayoutAttributes", 0)))objc_registerClassPair(c);
-        if ((c = objc_allocateClassPair(PSUICollectionViewController_.class, "PSUICollectionViewController", 0))) objc_registerClassPair(c);
-    }
-}
-
-CGFloat PSTSimulatorAnimationDragCoefficient(void) {
-    static CGFloat (*UIAnimationDragCoefficient)(void) = NULL;
-#if TARGET_IPHONE_SIMULATOR
-#import <dlfcn.h>
-    static dispatch_once_t onceToken;
-    dispatch_once(&onceToken, ^{
-        UIAnimationDragCoefficient = (CGFloat (*)(void))dlsym(RTLD_DEFAULT, "UIAnimationDragCoefficient");
-    });
-#endif
-    return UIAnimationDragCoefficient ? UIAnimationDragCoefficient() : 1.f;
-}
-
-// helper to check for ivar layout
-#if 0
-static void PSTPrintIvarsForClass(Class aClass) {
-    unsigned int varCount;
-    Ivar *vars = class_copyIvarList(aClass, &varCount);
-    for (int i = 0; i < varCount; i++) {
-        NSLog(@"%s %s", ivar_getTypeEncoding(vars[i]), ivar_getName(vars[i]));
-    }
-    free(vars);
-}
-
-__attribute__((constructor)) static void PSTCheckIfIVarLayoutIsEqualSize(void) {
-    @autoreleasepool {
-        NSLog(@"PSTCollectionView size = %zd, UICollectionView size = %zd", class_getInstanceSize(PSTCollectionView.class),class_getInstanceSize(UICollectionView.class));
-        NSLog(@"PSTCollectionViewCell size = %zd, UICollectionViewCell size = %zd", class_getInstanceSize(PSTCollectionViewCell.class),class_getInstanceSize(UICollectionViewCell.class));
-        NSLog(@"PSTCollectionViewController size = %zd, UICollectionViewController size = %zd", class_getInstanceSize(PSTCollectionViewController.class),class_getInstanceSize(UICollectionViewController.class));
-        NSLog(@"PSTCollectionViewLayout size = %zd, UICollectionViewLayout size = %zd", class_getInstanceSize(PSTCollectionViewLayout.class),class_getInstanceSize(UICollectionViewLayout.class));
-        NSLog(@"PSTCollectionViewFlowLayout size = %zd, UICollectionViewFlowLayout size = %zd", class_getInstanceSize(PSTCollectionViewFlowLayout.class),class_getInstanceSize(UICollectionViewFlowLayout.class));
-        //PSTPrintIvarsForClass(PSTCollectionViewFlowLayout.class); NSLog(@"\n\n\n");PSTPrintIvarsForClass(UICollectionViewFlowLayout.class);
-    }
-}
-#endif
