@@ -113,24 +113,3 @@ typedef NS_ENUM(NSUInteger, PSTCollectionElementCategory) {
 - (void)performBatchUpdates:(void (^)(void))updates completion:(void (^)(BOOL finished))completion; // allows multiple insert/delete/reload/move calls to be animated simultaneously. Nestable.
 
 @end
-
-// To dynamically switch between PSTCollectionView and UICollectionView, use the PSUICollectionView* classes.
-#define PSUICollectionView PSUICollectionView_
-#define PSUICollectionViewCell PSUICollectionViewCell_
-#define PSUICollectionReusableView PSUICollectionReusableView_
-#define PSUICollectionViewDelegate PSTCollectionViewDelegate
-#define PSUICollectionViewDataSource PSTCollectionViewDataSource
-#define PSUICollectionViewLayout PSUICollectionViewLayout_
-#define PSUICollectionViewFlowLayout PSUICollectionViewFlowLayout_
-#define PSUICollectionViewDelegateFlowLayout PSTCollectionViewDelegateFlowLayout
-#define PSUICollectionViewLayoutAttributes PSUICollectionViewLayoutAttributes_
-#define PSUICollectionViewController PSUICollectionViewController_
-
-@interface PSUICollectionView_ : PSTCollectionView @end
-@interface PSUICollectionViewCell_ : PSTCollectionViewCell @end
-@interface PSUICollectionReusableView_ : PSTCollectionReusableView @end
-@interface PSUICollectionViewLayout_ : PSTCollectionViewLayout @end
-@interface PSUICollectionViewFlowLayout_ : PSTCollectionViewFlowLayout @end
-@protocol PSUICollectionViewDelegateFlowLayout_ <PSTCollectionViewDelegateFlowLayout> @end
-@interface PSUICollectionViewLayoutAttributes_ : PSTCollectionViewLayoutAttributes @end
-@interface PSUICollectionViewController_ : PSTCollectionViewController <PSUICollectionViewDelegate, PSUICollectionViewDataSource> @end

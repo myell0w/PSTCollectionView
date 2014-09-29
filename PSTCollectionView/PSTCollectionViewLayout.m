@@ -8,6 +8,7 @@
 #import "PSTCollectionView.h"
 #import "PSTCollectionViewItemKey.h"
 #import "PSTCollectionViewData.h"
+#import <objc/runtime.h>
 
 #import <objc/runtime.h>
 
